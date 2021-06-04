@@ -7,7 +7,7 @@
 - Spring Boot 2.5.0
 - maven 3.3.9
 - JDK8u151
-- eclipse Oxygen
+- eclipse Oxygen JEE
 
 通过pom.xml中的标签指定版本。
 
