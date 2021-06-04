@@ -2,6 +2,14 @@
 
 ## 搭建第一个Spring Boot应用
 
+在eclipse中新建一个maven project，使用默认配置，以下代码基于
+
+- Spring Boot 2.5.0
+- maven 3.3.9
+- JDK8u151
+
+通过pom.xml中的标签指定版本。
+
 ### 配置：pol.xml
 
 pom.xml 是用于构建项目的”配方“。
