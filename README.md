@@ -4,7 +4,7 @@
 
 通过访问ip:port/greeting?name=xxx返回JSON body`{"id":1,"content":"Hello, xxx!"}`。
 
-### 创建资源表示类
+### 模板：创建资源表示类
 
 要对Greeting表示建模，创建一个资源表示类：
 
@@ -31,7 +31,7 @@ public class Greeting {
 }
 ```
 
-### 创建资源控制器
+### 控制：创建资源控制器
 
 ```java
 package com.weso.helloworld.restservice;
