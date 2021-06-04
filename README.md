@@ -9,7 +9,7 @@
 - JDK8u151
 - eclipse Oxygen for JEE
 
-### 配置：pol.xml
+### 配置：pom.xml
 
 在eclipse中新建一个maven project，使用默认配置，通过pom.xml中的标签指定版本。
 
