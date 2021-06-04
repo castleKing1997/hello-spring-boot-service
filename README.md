@@ -1,105 +1,73 @@
 # helloworld
 
-## 搭建第一个Spring Boot应用
+## 搭建第一个RESTful的Web服务
 
-### 配置：pol.xml
+通过访问ip:port/greeting?name=xxx返回JSON body`{"id":1,"content":"Hello, xxx!"}`。
 
-pom.xml 是用于构建项目的”配方“。
+### 创建资源表示类
 
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
-    <groupId>com.example</groupId>
-    <artifactId>myproject</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.5.0</version>
-    </parent>
-
-    <!-- Additional lines to be added here... -->
-
-</project>
-```
-
-spring-boot-starter-parent 是一个特殊的starter，提供有用的 Maven 默认值。 它还提供了一个依赖项管理部分，以便可以省略该版本spring boot包含的依赖项的版本标签。
-
-此时在命令行中执行：
-
-```bash
-$ mvn dependency:tree
-
-[INFO] com.example:myproject:jar:0.0.1-SNAPSHOT
-```
-
-可以发现spring-boot-starter-parent 并没有引入依赖。为了创建一个简单的web应用，我们引入以下依赖：
-
-```xml
-<dependencies>
-    <dependency>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-web</artifactId>
-    </dependency>
-</dependencies>
-```
-
-如果再次运行 mvn dependency:tree，会看到现在有许多额外的依赖项，包括 Tomcat Web 服务器和 Spring Boot 本身。
-
-### 入口：SpringApplication
-
-为了完成第一个应用，我们建一个入口类：
+要对Greeting表示建模，创建一个资源表示类：
 
 ```java
-package com.weso.helloworld;
+package com.weso.helloworld.restservice;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+public class Greeting {
 
-/**
- * Hello world!
- *
- */
-@RestController
-@EnableAutoConfiguration
-public class App {
+	private final long id;
+	private final String content;
 
-	@RequestMapping("/")
-	String home() {
-		return "Hello World!";
+	public Greeting(long id, String content) {
+		this.id = id;
+		this.content = content;
 	}
 
-	public static void main(String[] args) {
-		SpringApplication.run(App.class, args);
+	public long getId() {
+		return id;
 	}
 
+	public String getContent() {
+		return content;
+	}
 }
 ```
 
-### 打包：jar
+### 创建资源控制器
 
-要打jar包需要在`pom.xml`中加入以下插件：
+```java
+package com.weso.helloworld.restservice;
 
-```xml
-<build>
-    <plugins>
-        <plugin>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-maven-plugin</artifactId>
-        </plugin>
-    </plugins>
-</build>
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class GreetingController {
+
+	private static final String template = "Hello, %s!";
+	private final AtomicLong counter = new AtomicLong();
+
+	@GetMapping("/greeting")
+	public Greeting greeting(@RequestParam(value = "name", defaultValue = "World") String name) {
+		return new Greeting(counter.incrementAndGet(), String.format(template, name));
+	}
+}
 ```
 
-在命令行执行`mvn package`，打包结果在`target`目录中，使用`java -jar`运行，使用`jar tvf`包内内容。
+其中需要说明以下的Notation：
 
+- @GetMapping("/greeting")：回应向`/greeting`发出的GET请求，此外
 
+  @PostMapping：for post
 
+  @RequestMapping：for all；指定方法`@RequestMapping(method=xxx)`
 
+- @RequestParam：将查询字符串参数` name `的值绑定到 `greeting() `方法的` name` 参数中。 如果请求中没有 `name` 参数，则使用 `World `的 `defaultValue`。
+
+- @RestController：将类标记为控制器，其中每个方法都返回对象而不是视图。它是包含@Controller 和@ResponseBody 。
+
+传统 MVC 控制器和前面展示的 RESTful Web 服务控制器之间的主要区别在于 HTTP 响应主体的创建方式。 此 RESTful Web 服务控制器不依赖于视图技术将问候数据在服务器端呈现为 HTML，而是**填充并返回一个 Greeting 对象。 对象数据将作为 JSON 直接写入 HTTP 响应。** 因为 Jackson 2 在类路径上，所以会自动选择 Spring 的 MappingJackson2HttpMessageConverter 将 Greeting 实例转换为 JSON。 
+
+[^1]: [理解RESTful架构 - 阮一峰的网络日志 (ruanyifeng.com)](http://www.ruanyifeng.com/blog/2011/09/restful.html)
 
