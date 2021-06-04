@@ -1,105 +1,142 @@
 # helloworld
 
-## 搭建第一个Spring Boot应用
+## 使用第一个RESTful的Web服务
 
-### 配置：pol.xml
+在java中访问https://quoters.apps.pcfone.io/api/random中的随机quotation。
 
-pom.xml 是用于构建项目的”配方“。
+### 模板：创建资源表示类
 
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+Spring 提供了一个方便的模板类，称为 RestTemplate。 RestTemplate 使与大多数 RESTful 服务的交互成，可以将该数据绑定到自定义类型。
 
-    <groupId>com.example</groupId>
-    <artifactId>myproject</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+```java
+package com.weso.helloworld.consumingrest;
 
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.5.0</version>
-    </parent>
+import com.fasterxml.jackson.annotation.JsonFormat.Value;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-    <!-- Additional lines to be added here... -->
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Quote {
 
-</project>
+	private String type;
+	private Value value;
+
+	public Quote() {
+	}
+
+	public String getType() {
+		return type;
+	}
+
+	public void setType(String type) {
+		this.type = type;
+	}
+
+	public Value getValue() {
+		return value;
+	}
+
+	public void setValue(Value value) {
+		this.value = value;
+	}
+
+	@Override
+	public String toString() {
+		return "Quote{" + "type='" + type + '\'' + ", value=" + value + '}';
+	}
+}
+
 ```
 
-spring-boot-starter-parent 是一个特殊的starter，提供有用的 Maven 默认值。 它还提供了一个依赖项管理部分，以便可以省略该版本spring boot包含的依赖项的版本标签。
+```java
+package com.weso.helloworld.consumingrest;
 
-此时在命令行中执行：
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-```bash
-$ mvn dependency:tree
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Value {
 
-[INFO] com.example:myproject:jar:0.0.1-SNAPSHOT
+	private Long id;
+	private String quote;
+
+	public Value() {
+	}
+
+	public Long getId() {
+		return this.id;
+	}
+
+	public String getQuote() {
+		return this.quote;
+	}
+
+	public void setId(Long id) {
+		this.id = id;
+	}
+
+	public void setQuote(String quote) {
+		this.quote = quote;
+	}
+
+	@Override
+	public String toString() {
+		return "Value{" + "id=" + id + ", quote='" + quote + '\'' + '}';
+	}
+}
 ```
 
-可以发现spring-boot-starter-parent 并没有引入依赖。为了创建一个简单的web应用，我们引入以下依赖：
+其中用到了`@JsonIgnoreProperties`，表示任何未绑定在此类型中的属性都应被忽略。这里面用到的变量名需要和JSON里的键一一对应，否则需要用`@JsonProperty`进行指定。
 
-```xml
-<dependencies>
-    <dependency>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-web</artifactId>
-    </dependency>
-</dependencies>
-```
+### 控制：修改主类
 
-如果再次运行 mvn dependency:tree，会看到现在有许多额外的依赖项，包括 Tomcat Web 服务器和 Spring Boot 本身。
+为了显示从quotation服务中的到的内容，需要在主类中加入以下内容：
 
-### 入口：SpringApplication
-
-为了完成第一个应用，我们建一个入口类：
+- logger：将输出发送到日志（在这个例子中是控制台）
+- RestTemplate：它使用 Jackson JSON 处理库来处理传入的数据
+- CommandLineRunner：在启动时运行 RestTemplate（并因此获取我们的报价）。
 
 ```java
 package com.weso.helloworld;
 
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
 
-/**
- * Hello world!
- *
- */
+import com.weso.helloworld.consumingrest.Quote;
+
+@SpringBootApplication
 @RestController
-@EnableAutoConfiguration
 public class App {
-
-	@RequestMapping("/")
-	String home() {
-		return "Hello World!";
-	}
+	private static final org.slf4j.Logger log = LoggerFactory.getLogger(App.class);
 
 	public static void main(String[] args) {
 		SpringApplication.run(App.class, args);
 	}
 
+	@GetMapping("/")
+	public String hello(@RequestParam(value = "name", defaultValue = "World") String name) {
+		return String.format("Hello %s!", name);
+	}
+
+	@Bean
+	public RestTemplate restTemplate(RestTemplateBuilder builder) {
+		return builder.build();
+	}
+
+	@Bean
+	public CommandLineRunner run(RestTemplate restTemplate) throws Exception {
+		return args -> {
+			Quote quote = restTemplate.getForObject("https://quoters.apps.pcfone.io/api/random", Quote.class);
+			log.info(quote.toString());
+		};
+	}
 }
 ```
 
-### 打包：jar
-
-要打jar包需要在`pom.xml`中加入以下插件：
-
-```xml
-<build>
-    <plugins>
-        <plugin>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-maven-plugin</artifactId>
-        </plugin>
-    </plugins>
-</build>
-```
-
-在命令行执行`mvn package`，打包结果在`target`目录中，使用`java -jar`运行，使用`jar tvf`包内内容。
-
-
-
-
-
+运行后在控制台中显示`[main] com.weso.helloworld.App: Quote{type='success', value=Value{id=2, quote='With Boot you deploy everywhere you can find a JVM basically.'}}`
